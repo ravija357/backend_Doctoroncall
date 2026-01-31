@@ -2,8 +2,11 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './app/routes/auth.routes';
 import cookieParser from 'cookie-parser';
+
+import path from 'path';
+import uploadRoutes from './app/routes/upload.routes';
+import authRoutes from './app/routes/auth.routes';
 
 dotenv.config();
 
@@ -13,12 +16,11 @@ const PORT = Number(process.env.PORT) || 3001;
 app.use(
   cors({
     origin: 'http://localhost:3000',
-    credentials: true, // 🔥 REQUIRED
+    credentials: true,
   })
 );
 
 app.use(cookieParser());
-
 app.use(express.json({ limit: '10mb' }));
 
 mongoose
@@ -26,18 +28,25 @@ mongoose
   .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB error:', err));
 
-app.get('/health', (req, res) => {
+
+app.get('/health', (_req, res) => {
   res.json({
-    status: 'Sprint 4 Backend API Ready ✅',
+    status: 'Sprint 5 Backend API Ready ✅',
     endpoints: [
       'POST /api/auth/register',
-      'POST /api/auth/login'
-    ]
+      'POST /api/auth/login',
+      'POST /upload',
+    ],
   });
 });
 
 app.use('/api/auth', authRoutes);
 
+app.use('/upload', uploadRoutes);
+
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
