@@ -1,57 +1,81 @@
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import { env } from './config/env';
+import { connectDB } from './config/db';
+import { AppError } from './app/utils/AppError';
+import { globalErrorHandler } from './app/middlewares/error.middleware';
 
 import uploadRoutes from './app/routes/upload.routes';
 import authRoutes from './app/routes/auth.routes';
 import adminRoutes from './app/routes/admin.routes';
+import doctorRoutes from './app/routes/doctor.routes';
+import availabilityRoutes from './app/routes/availability.routes';
+import appointmentRoutes from './app/routes/appointment.routes';
+import reviewRoutes from './app/routes/review.routes';
+import historyRoutes from './app/routes/medical-history.routes';
+import messageRoutes from './app/routes/message.routes';
 
-dotenv.config();
+import http from 'http';
+import { Server } from 'socket.io';
+import { initializeSocket } from './app/socket/socket.controller';
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3001;
+const server = http.createServer(app);
 
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+// Initialize Socket Logic
+initializeSocket(io);
+
+// Middleware
 app.use(
   cors({
     origin: 'http://localhost:3000',
     credentials: true,
   })
 );
-
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 
-mongoose
-  .connect(process.env.MONGO_URI!)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB error:', err));
+// Database Connection
+connectDB();
 
+// Routes
 app.get('/health', (_req, res) => {
   res.json({
-    status: 'Sprint 5 Backend API Ready ✅',
-    endpoints: [
-      'POST /api/auth/register',
-      'POST /api/auth/login',
-      'PUT /api/auth/:id',
-      'POST /api/admin/users',
-      'GET /api/admin/users',
-      'GET /api/admin/users/:id',
-      'PUT /api/admin/users/:id',
-      'DELETE /api/admin/users/:id',
-      'POST /upload',
-    ],
+    status: 'Doctor Booking System Backend API Ready ✅',
+    env: env.NODE_ENV,
   });
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/availability', availabilityRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/medical-history', historyRoutes);
+app.use('/api/messages', messageRoutes);
 app.use('/upload', uploadRoutes);
 
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`);
+// Global Error Handler
+app.all('*', (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
+
+app.use(globalErrorHandler);
+
+server.listen(Number(env.PORT), () => {
+  console.log(`🚀 Backend running on http://localhost:${env.PORT}`);
 });

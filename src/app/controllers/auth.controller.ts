@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import User from '../models/User.model';
 
 const authService = new AuthService();
 
@@ -41,6 +42,45 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+export const getMe = async (req: Request | any, res: Response) => {
+  return res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+};
+
+export const logout = async (_req: Request, res: Response) => {
+  res.clearCookie('token');
+  return res.status(200).json({
+    success: true,
+    message: 'Logged out successfully',
+  });
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const data: any = req.body;
+
+    if (req.file) {
+      data.image = `/uploads/${req.file.filename}`;
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, data, {
+      new: true,
+    }).select('-password');
+
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
       success: false,
       message: err.message,
     });

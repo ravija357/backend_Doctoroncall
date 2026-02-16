@@ -39,4 +39,11 @@ router.delete(
   controller.deleteUser
 );
 
+router.patch(
+  '/doctors/:id/verify',
+  authMiddleware,
+  adminMiddleware,
+  controller.verifyDoctor
+);
+
 export default router;

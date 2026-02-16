@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import User from '../../models/User.model';
+import User from '../models/User.model';
+import Doctor from '../models/Doctor.model';
 import bcrypt from 'bcryptjs';
 
 export class AdminController {
@@ -45,5 +46,28 @@ export class AdminController {
   async deleteUser(req: Request, res: Response) {
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted successfully' });
+  }
+
+  async verifyDoctor(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      // Find doctor by user ID or doctor ID? Route params usually ID.
+      // Let's assume ID is Doctor ID for specificity, or User ID.
+      // Given it's admin/doctors/:id, let's allow passing Doctor ID.
+
+      // const Doctor = require('../models/Doctor.model').default; // Dynamic import to avoid circular dependency if any? No, just standard import
+
+      const doctor = await Doctor.findById(id);
+      if (!doctor) {
+        return res.status(404).json({ success: false, message: 'Doctor profile not found' });
+      }
+
+      doctor.isVerified = true;
+      await doctor.save();
+
+      return res.json({ success: true, message: 'Doctor verified successfully', data: doctor });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
   }
 }

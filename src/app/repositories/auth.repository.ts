@@ -1,4 +1,4 @@
-import User, { IUser } from '../../models/User.model';
+import User, { IUser } from '../models/User.model';
 
 export class AuthRepository {
   findByEmail(email: string): Promise<IUser | null> {

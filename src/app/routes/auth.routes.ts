@@ -1,70 +1,26 @@
 import { Router } from 'express';
-import { AuthService } from '../services/auth.service';
+import * as AuthController from '../controllers/auth.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { upload } from '../../utils/multer';
-import User from '../../models/User.model';
 
 const router = Router();
-const authService = new AuthService();
 
 /**
  * POST /api/auth/login
  */
-router.post('/login', async (req, res) => {
-  try {
-    const result = await authService.login(req.body);
-
-    res.cookie('token', result.token, {
-      httpOnly: true,
-      sameSite: 'lax',
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: result.user,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
+router.post('/login', AuthController.login);
 
 /**
  * POST /api/auth/register
  */
-router.post('/register', async (req, res) => {
-  try {
-    const result = await authService.register(req.body);
-
-    res.cookie('token', result.token, {
-      httpOnly: true,
-      sameSite: 'lax',
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: result.user,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
+router.post('/register', AuthController.register);
 
 /**
  * GET /api/auth/me
  * Get logged-in user (from token)
  */
-router.get('/me', authMiddleware, async (req: any, res) => {
-  return res.status(200).json({
-    success: true,
-    data: req.user,
-  });
-});
+router.get('/me', authMiddleware, AuthController.getMe);
+router.post('/logout', AuthController.logout);
 
 /**
  * PUT /api/auth/:id
@@ -74,22 +30,7 @@ router.put(
   '/:id',
   authMiddleware,
   upload.single('image'),
-  async (req, res) => {
-    const data: any = req.body;
-
-    if (req.file) {
-      data.image = `/uploads/${req.file.filename}`;
-    }
-
-    const user = await User.findByIdAndUpdate(req.params.id, data, {
-      new: true,
-    }).select('-password');
-
-    return res.json({
-      success: true,
-      data: user,
-    });
-  }
+  AuthController.updateProfile
 );
 
 export default router;
