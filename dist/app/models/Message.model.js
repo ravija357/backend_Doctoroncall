@@ -33,28 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const AuthController = __importStar(require("../controllers/auth.controller"));
-const auth_middleware_1 = require("../middlewares/auth.middleware");
-const upload_middleware_1 = require("../middlewares/upload.middleware");
-const router = (0, express_1.Router)();
-/**
- * POST /api/auth/login
- */
-router.post('/login', AuthController.login);
-/**
- * POST /api/auth/register
- */
-router.post('/register', AuthController.register);
-/**
- * GET /api/auth/me
- * Get logged-in user (from token)
- */
-router.get('/me', auth_middleware_1.authMiddleware, AuthController.getMe);
-router.post('/logout', AuthController.logout);
-/**
- * PUT /api/auth/:id
- * Update logged-in user profile (with image)
- */
-router.put('/:id', auth_middleware_1.authMiddleware, upload_middleware_1.upload.single('image'), AuthController.updateProfile);
-exports.default = router;
+const mongoose_1 = __importStar(require("mongoose"));
+const messageSchema = new mongoose_1.Schema({
+    sender: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+    receiver: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true },
+    read: { type: Boolean, default: false },
+    type: { type: String, enum: ['text', 'image', 'call_log', 'file'], default: 'text' },
+    callDuration: { type: Number },
+    deletedBy: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'User' }]
+}, { timestamps: true });
+// Index for quick retrieval of chat history between two users
+messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, sender: 1, createdAt: -1 });
+exports.default = mongoose_1.default.model('Message', messageSchema);

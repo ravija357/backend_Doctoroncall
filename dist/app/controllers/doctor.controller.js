@@ -53,6 +53,8 @@ const getDoctorById = async (req, res) => {
     }
 };
 exports.getDoctorById = getDoctorById;
+const socket_controller_1 = require("../socket/socket.controller");
+// ... (existing imports)
 const updateSchedule = async (req, res) => {
     try {
         const { schedules } = req.body;
@@ -61,6 +63,16 @@ const updateSchedule = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid schedule format' });
         }
         const doctor = await doctorService.updateSchedule(req.user.id, schedules);
+        // Notify clients about schedule update
+        if (doctor) {
+            try {
+                const io = (0, socket_controller_1.getIO)();
+                io.emit('schedule_updated', { doctorId: doctor._id });
+            }
+            catch (err) {
+                console.error('[SOCKET] Failed to emit schedule_updated:', err);
+            }
+        }
         return res.json({ success: true, data: doctor });
     }
     catch (error) {

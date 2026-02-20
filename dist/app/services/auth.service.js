@@ -31,6 +31,9 @@ class AuthService {
         if (!user || !(await user.comparePassword(data.password))) {
             throw new Error('Invalid email or password');
         }
+        if (data.role && user.role !== data.role) {
+            throw new Error('Access denied. Invalid role for this portal.');
+        }
         const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
         return {
             user: {

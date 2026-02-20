@@ -13,7 +13,12 @@ class AppointmentRepository {
         return Appointment_model_1.default.find({ doctor: doctorId, date });
     }
     async findByPatientId(patientId) {
-        return Appointment_model_1.default.find({ patient: patientId }).populate('doctor').sort({ date: -1 });
+        return Appointment_model_1.default.find({ patient: patientId })
+            .populate({
+            path: 'doctor',
+            populate: { path: 'user' }
+        })
+            .sort({ date: -1 });
     }
     async findByDoctorId(doctorId) {
         return Appointment_model_1.default.find({ doctor: doctorId }).populate('patient', '-password').sort({ date: -1 });
@@ -23,6 +28,9 @@ class AppointmentRepository {
     }
     async findById(id) {
         return Appointment_model_1.default.findById(id).populate('doctor').populate('patient', '-password');
+    }
+    async deleteById(id) {
+        return Appointment_model_1.default.findByIdAndDelete(id);
     }
 }
 exports.AppointmentRepository = AppointmentRepository;

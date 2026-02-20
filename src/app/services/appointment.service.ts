@@ -3,10 +3,13 @@ import { AvailabilityRepository } from '../repositories/availability.repository'
 import { CreateAppointmentDto } from '../dto/appointment.dto';
 import { DoctorRepository } from '../repositories/doctor.repository';
 
+import { NotificationService } from './notification.service';
+
 export class AppointmentService {
     private appointmentRepo = new AppointmentRepository();
     private availabilityRepo = new AvailabilityRepository();
     private doctorRepo = new DoctorRepository();
+    private notificationService = new NotificationService();
 
     async createAppointment(patientId: string, dto: CreateAppointmentDto) {
         const { doctorId, date, startTime, endTime } = dto;
@@ -33,6 +36,17 @@ export class AppointmentService {
                 reason: dto.reason,
                 status: 'confirmed'
             });
+
+            // Notify Doctor
+            // doctor.user is the User ObjectId
+            await this.notificationService.createNotification({
+                recipient: (doctor.user as any).toString(),
+                message: `New appointment detailed for ${date} at ${startTime}`,
+                type: 'INFO',
+                relatedId: appointment._id.toString(),
+                link: `/doctor/appointments`
+            });
+
             return appointment;
         } catch (error) {
             // Compensation: Unbook the slot if appointment creation fails
@@ -91,6 +105,20 @@ export class AppointmentService {
         // Unbook the slot
         const doctorId = (appointment.doctor as any)._id.toString();
         await this.availabilityRepo.unbookSlot(doctorId, appointment.date, appointment.startTime);
+
+        // Notify the OTHER party
+        const notifyRecipientId = userId === patientId ? doctorUserId : patientId;
+        const message = userId === patientId
+            ? `Appointment cancelled by patient`
+            : `Appointment cancelled by doctor`;
+
+        await this.notificationService.createNotification({
+            recipient: notifyRecipientId,
+            message: message,
+            type: 'WARNING',
+            relatedId: id,
+            link: `/appointments`
+        });
 
         return updatedAppointment;
     }

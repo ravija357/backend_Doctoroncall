@@ -40,4 +40,7 @@ const router = (0, express_1.Router)();
 router.post('/', auth_middleware_1.authMiddleware, AppointmentController.createAppointment);
 router.get('/my-appointments', auth_middleware_1.authMiddleware, AppointmentController.getMyAppointments);
 router.get('/doctor-appointments', auth_middleware_1.authMiddleware, AppointmentController.getDoctorAppointments);
+router.delete('/:id', auth_middleware_1.authMiddleware, AppointmentController.deleteAppointment);
+router.patch('/:id/cancel', auth_middleware_1.authMiddleware, AppointmentController.cancelAppointment);
+router.patch('/:id/status', auth_middleware_1.authMiddleware, AppointmentController.updateStatus);
 exports.default = router;

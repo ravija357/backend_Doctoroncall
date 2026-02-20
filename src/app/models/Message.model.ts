@@ -5,8 +5,9 @@ export interface IMessage extends Document {
     receiver: mongoose.Types.ObjectId;
     content: string;
     read: boolean;
-    type: 'text' | 'image' | 'call_log'; // extensible types
+    type: 'text' | 'image' | 'call_log' | 'file'; // extensible types
     callDuration?: number; // for call logs
+    deletedBy: mongoose.Types.ObjectId[];
 }
 
 const messageSchema = new Schema<IMessage>(
@@ -15,8 +16,9 @@ const messageSchema = new Schema<IMessage>(
         receiver: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         content: { type: String, required: true },
         read: { type: Boolean, default: false },
-        type: { type: String, enum: ['text', 'image', 'call_log'], default: 'text' },
-        callDuration: { type: Number }
+        type: { type: String, enum: ['text', 'image', 'call_log', 'file'], default: 'text' },
+        callDuration: { type: Number },
+        deletedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }]
     },
     { timestamps: true }
 );

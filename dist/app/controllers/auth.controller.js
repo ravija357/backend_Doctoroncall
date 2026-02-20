@@ -9,7 +9,8 @@ const User_model_1 = __importDefault(require("../models/User.model"));
 const authService = new auth_service_1.AuthService();
 const login = async (req, res) => {
     try {
-        const result = await authService.login(req.body);
+        const { email, password, role } = req.body;
+        const result = await authService.login({ email, password, role });
         res.cookie('token', result.token, {
             httpOnly: true,
             sameSite: 'lax',

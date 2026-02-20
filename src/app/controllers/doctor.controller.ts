@@ -48,6 +48,10 @@ export const getDoctorById = async (req: Request, res: Response) => {
     }
 };
 
+import { getIO } from '../socket/socket.controller';
+
+// ... (existing imports)
+
 export const updateSchedule = async (req: Request | any, res: Response) => {
     try {
         const { schedules } = req.body;
@@ -57,6 +61,17 @@ export const updateSchedule = async (req: Request | any, res: Response) => {
         }
 
         const doctor = await doctorService.updateSchedule(req.user.id, schedules);
+
+        // Notify clients about schedule update
+        if (doctor) {
+            try {
+                const io = getIO();
+                io.emit('schedule_updated', { doctorId: doctor._id });
+            } catch (err) {
+                console.error('[SOCKET] Failed to emit schedule_updated:', err);
+            }
+        }
+
         return res.json({ success: true, data: doctor });
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });

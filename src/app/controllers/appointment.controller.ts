@@ -59,3 +59,20 @@ export const cancelAppointment = async (req: Request | any, res: Response) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const updateStatus = async (req: Request | any, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        // Basic validation
+        if (!['confirmed', 'cancelled', 'completed', 'pending'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status' });
+        }
+
+        const appointment = await appointmentService.updateStatus(id, status);
+        return res.json({ success: true, data: appointment, message: 'Status updated successfully' });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};

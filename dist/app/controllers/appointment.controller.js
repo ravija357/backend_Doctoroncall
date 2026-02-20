@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDoctorAppointments = exports.getMyAppointments = exports.createAppointment = void 0;
+exports.updateStatus = exports.cancelAppointment = exports.deleteAppointment = exports.getDoctorAppointments = exports.getMyAppointments = exports.createAppointment = void 0;
 const appointment_service_1 = require("../services/appointment.service");
 const doctor_service_1 = require("../services/doctor.service");
 const appointment_dto_1 = require("../dto/appointment.dto");
@@ -43,3 +43,41 @@ const getDoctorAppointments = async (req, res) => {
     }
 };
 exports.getDoctorAppointments = getDoctorAppointments;
+const deleteAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await appointmentService.deleteAppointment(id, req.user.id);
+        return res.json({ success: true, message: 'Appointment deleted successfully' });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.deleteAppointment = deleteAppointment;
+const cancelAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const appointment = await appointmentService.cancelAppointment(id, req.user.id);
+        return res.json({ success: true, data: appointment, message: 'Appointment cancelled successfully' });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.cancelAppointment = cancelAppointment;
+const updateStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        // Basic validation
+        if (!['confirmed', 'cancelled', 'completed', 'pending'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status' });
+        }
+        const appointment = await appointmentService.updateStatus(id, status);
+        return res.json({ success: true, data: appointment, message: 'Status updated successfully' });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.updateStatus = updateStatus;

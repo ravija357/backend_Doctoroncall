@@ -9,5 +9,6 @@ router.get('/my-appointments', authMiddleware, AppointmentController.getMyAppoin
 router.get('/doctor-appointments', authMiddleware, AppointmentController.getDoctorAppointments);
 router.delete('/:id', authMiddleware, AppointmentController.deleteAppointment);
 router.patch('/:id/cancel', authMiddleware, AppointmentController.cancelAppointment);
+router.patch('/:id/status', authMiddleware, AppointmentController.updateStatus);
 
 export default router;

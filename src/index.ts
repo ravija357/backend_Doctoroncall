@@ -16,6 +16,7 @@ import appointmentRoutes from './app/routes/appointment.routes';
 import reviewRoutes from './app/routes/review.routes';
 import historyRoutes from './app/routes/medical-history.routes';
 import messageRoutes from './app/routes/message.routes';
+import notificationRoutes from './app/routes/notification.routes';
 
 import http from 'http';
 import { Server } from 'socket.io';
@@ -44,7 +45,13 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// Serve static files from public/uploads directory
+// Serve static files from public/uploads directory
+const uploadsPath = path.join(process.cwd(), 'public', 'uploads');
+console.log('Serving uploads from:', uploadsPath);
+app.use('/uploads', express.static(uploadsPath));
 
 // Database Connection
 connectDB();
@@ -65,9 +72,10 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/medical-history', historyRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/upload', uploadRoutes);
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 
 // Global Error Handler
 app.all('*', (req: express.Request, _res: express.Response, next: express.NextFunction) => {
