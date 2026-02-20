@@ -1,53 +1,20 @@
 import Review, { IReview } from '../models/Review.model';
 import Doctor from '../models/Doctor.model';
-import Appointment from '../models/Appointment.model';
 import { CreateReviewDto } from '../dto/review.dto';
 import mongoose from 'mongoose';
+import { getIO } from '../socket/socket.controller';
 
 export class ReviewService {
 
     async createReview(patientId: string, dto: CreateReviewDto) {
-        // 1. Verify Appointment validity
-        const appointment = await Appointment.findOne({
-            _id: dto.appointmentId,
-            patient: patientId,
-            doctor: dto.doctorId,
-            status: 'completed'
-        });
+        // Upsert review directly without requiring an appointment
+        const review = await Review.findOneAndUpdate(
+            { patient: patientId, doctor: dto.doctorId },
+            { rating: dto.rating, comment: dto.comment || "" },
+            { new: true, upsert: true }
+        );
 
-        // For testing purposes, we might want to allow 'confirmed' as well if we don't have a 'complete' flow yet.
-        // Let's stick to 'completed' but maybe auto-complete in createAppointment (no, that's bad).
-        // Let's check for 'confirmed' or 'completed' for now to ease testing, or strict 'completed'.
-        // If we strict 'completed', we need an endpoint to mark appointment as completed.
-        // The previous flow set it to 'confirmed'.
-        // let's allow 'confirmed' for now or add a complete endpoint. 
-        // Plan: Add 'completed' check. NOTE: User needs to mark it completed or admin/doctor. 
-        // Let's allow 'confirmed' for simplicity in this MVP phase, or strictly use 'completed' and assume there's a flow. 
-        // Current Appointment Service has updateStatus.
-
-        if (!appointment) {
-            // Double check if appointment exists at all
-            const exists = await Appointment.findById(dto.appointmentId);
-            if (!exists) throw new Error('Appointment not found');
-            if (exists.patient.toString() !== patientId) throw new Error('Unauthorized: Appointment does not belong to user');
-            if (exists.doctor.toString() !== dto.doctorId) throw new Error('Doctor mismatch');
-            if (exists.status !== 'completed' && exists.status !== 'confirmed') throw new Error('Appointment must be completed to review');
-        }
-
-        // 2. Check if already reviewed
-        const existingReview = await Review.findOne({ appointment: dto.appointmentId });
-        if (existingReview) throw new Error('Appointment already reviewed');
-
-        // 3. Create Review
-        const review = await Review.create({
-            patient: patientId,
-            doctor: dto.doctorId,
-            appointment: dto.appointmentId,
-            rating: dto.rating,
-            comment: dto.comment
-        });
-
-        // 4. Update Doctor Stats (Aggregated)
+        // Update Doctor Stats (Aggregated)
         await this.updateDoctorStats(dto.doctorId);
 
         return review;
@@ -70,10 +37,25 @@ export class ReviewService {
         ]);
 
         if (stats.length > 0) {
+            const avgRating = Math.round(stats[0].avgRating * 10) / 10;
+            const totalReviews = stats[0].totalReviews;
+
             await Doctor.findByIdAndUpdate(doctorId, {
-                averageRating: Math.round(stats[0].avgRating * 10) / 10, // Round to 1 decimal
-                totalReviews: stats[0].totalReviews
+                averageRating: avgRating,
+                totalReviews: totalReviews
             });
+
+            // Broadcast the updated rating to all connected clients
+            try {
+                const io = getIO();
+                io.emit('doctor_rating_updated', {
+                    doctorId,
+                    averageRating: avgRating,
+                    totalReviews: totalReviews
+                });
+            } catch (ioError) {
+                console.warn('[SOCKET] Could not emit doctor_rating_updated:', ioError);
+            }
         }
     }
 }

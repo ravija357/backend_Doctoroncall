@@ -16,7 +16,7 @@ export class DoctorRepository {
     async findAllWithFilters(filters: any): Promise<IDoctor[]> {
         const query: any = {};
 
-        if (filters.specialization) {
+        if (filters.specialization && filters.specialization !== 'All') {
             query.specialization = { $regex: filters.specialization, $options: 'i' };
         }
 
@@ -31,11 +31,24 @@ export class DoctorRepository {
         }
 
         if (filters.name) {
-            // Requires looking up specific user. 
-            // For now, simpler to do population filter or aggregation if we want to filter by user name.
-            // We can defer name search or do a 2-step lookup.
-            // Let's stick to filters on Doctor model fields for now + bio search
-            query.bio = { $regex: filters.name, $options: 'i' };
+            // Smarter name search: Search bio OR find users with matching names
+            // For simplicity and performance, we'll use an aggregation or separate lookup
+            // Let's use a $lookup if we want a single query, but a 2-step lookup is often easier to read
+
+            const User = require('../models/User.model').default;
+            const users = await User.find({
+                $or: [
+                    { firstName: { $regex: filters.name, $options: 'i' } },
+                    { lastName: { $regex: filters.name, $options: 'i' } }
+                ]
+            }).select('_id');
+
+            const userIds = users.map((u: any) => u._id);
+
+            query.$or = [
+                { bio: { $regex: filters.name, $options: 'i' } },
+                { user: { $in: userIds } }
+            ];
         }
 
         return Doctor.find(query).populate('user', '-password');

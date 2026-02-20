@@ -52,6 +52,35 @@ import { getIO } from '../socket/socket.controller';
 
 // ... (existing imports)
 
+export const updateProfile = async (req: Request | any, res: Response) => {
+    try {
+        const doctorProfile = await doctorService.getProfile(req.user.id);
+        if (!doctorProfile) {
+            return res.status(404).json({ success: false, message: 'Doctor profile not found' });
+        }
+
+        const updated = await doctorService.updateProfile(doctorProfile._id.toString(), req.body);
+
+        // Notify about profile update (fees, etc)
+        if (updated) {
+            try {
+                const io = getIO();
+                io.emit('doctor_profile_updated', {
+                    doctorId: updated._id,
+                    fees: updated.fees,
+                    specialization: updated.specialization
+                });
+            } catch (err) {
+                console.error('[SOCKET] Failed to emit doctor_profile_updated:', err);
+            }
+        }
+
+        return res.json({ success: true, data: updated });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const updateSchedule = async (req: Request | any, res: Response) => {
     try {
         const { schedules } = req.body;

@@ -4,6 +4,7 @@ import { CreateAppointmentDto } from '../dto/appointment.dto';
 import { DoctorRepository } from '../repositories/doctor.repository';
 
 import { NotificationService } from './notification.service';
+import { getIO } from '../socket/socket.controller';
 
 export class AppointmentService {
     private appointmentRepo = new AppointmentRepository();
@@ -47,6 +48,14 @@ export class AppointmentService {
                 link: `/doctor/appointments`
             });
 
+            // Emit socket event for real-time dashboard updates
+            try {
+                const io = getIO();
+                io.emit('appointment_updated', { doctorId: doctorId.toString() });
+            } catch (err) {
+                console.warn('[SOCKET] Could not emit appointment_updated:', err);
+            }
+
             return appointment;
         } catch (error) {
             // Compensation: Unbook the slot if appointment creation fails
@@ -64,7 +73,19 @@ export class AppointmentService {
     }
 
     async updateStatus(id: string, status: string) {
-        return this.appointmentRepo.updateStatus(id, status);
+        const updated = await this.appointmentRepo.updateStatus(id, status);
+        if (updated) {
+            try {
+                const io = getIO();
+                // We need the doctorId. If populate is not done by updateStatus, we manually fetch or assume it's returned.
+                // Assuming it's a populated or normal ObjectId
+                const doctorId = (updated.doctor as any)._id?.toString() || updated.doctor.toString();
+                io.emit('appointment_updated', { doctorId });
+            } catch (err) {
+                console.warn('[SOCKET] Could not emit appointment_updated:', err);
+            }
+        }
+        return updated;
     }
 
     async deleteAppointment(id: string, userId: string) {
@@ -119,6 +140,14 @@ export class AppointmentService {
             relatedId: id,
             link: `/appointments`
         });
+
+        // Emit socket event for real-time dashboard updates
+        try {
+            const io = getIO();
+            io.emit('appointment_updated', { doctorId });
+        } catch (err) {
+            console.warn('[SOCKET] Could not emit appointment_updated:', err);
+        }
 
         return updatedAppointment;
     }

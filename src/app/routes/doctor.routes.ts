@@ -11,6 +11,7 @@ router.get('/:id', DoctorController.getDoctorById);
 // Protected routes
 router.post('/profile', authMiddleware, DoctorController.createProfile);
 router.get('/profile/me', authMiddleware, DoctorController.getProfile);
+router.put('/profile', authMiddleware, DoctorController.updateProfile);
 router.put('/profile/schedule', authMiddleware, DoctorController.updateSchedule);
 
 export default router;
