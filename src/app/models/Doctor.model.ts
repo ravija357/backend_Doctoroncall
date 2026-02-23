@@ -17,6 +17,10 @@ export interface IDoctor extends Document {
     }[];
     averageRating: number;
     totalReviews: number;
+    totalPatients: number;
+    totalVisits: number;
+    onlineConsultations: number;
+    totalRevenue: number;
 }
 
 const doctorSchema = new Schema<IDoctor>(
@@ -36,7 +40,11 @@ const doctorSchema = new Schema<IDoctor>(
             isOff: { type: Boolean, default: false }
         }],
         averageRating: { type: Number, default: 0 },
-        totalReviews: { type: Number, default: 0 }
+        totalReviews: { type: Number, default: 0 },
+        totalPatients: { type: Number, default: 0 },
+        totalVisits: { type: Number, default: 0 },
+        onlineConsultations: { type: Number, default: 0 },
+        totalRevenue: { type: Number, default: 0 }
     },
     { timestamps: true }
 );

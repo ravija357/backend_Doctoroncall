@@ -13,6 +13,9 @@ export const doctorSchema = z.object({
         endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
         isOff: z.boolean().default(false),
     })).min(1, 'At least one schedule day is required'),
+    totalPatients: z.number().optional(),
+    totalVisits: z.number().optional(),
+    onlineConsultations: z.number().optional(),
 });
 
 export type DoctorDto = z.infer<typeof doctorSchema>;

@@ -1,5 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import Message from '../models/Message.model';
+import Notification from '../models/Notification.model';
+import User from '../models/User.model';
 
 let ioInstance: Server;
 
@@ -39,8 +41,8 @@ export const initializeSocket = (io: Server) => {
         console.log(`[SOCKET] User ${socket.userId} joined room ${socket.userId}`);
 
         // Handle sending messages
-        socket.on('send_message', async (data: { receiverId: string; content: string; type?: string }) => {
-            const { receiverId, content, type = 'text' } = data;
+        socket.on('send_message', async (data: { receiverId: string; content: string; type?: string; fileUrl?: string; fileName?: string }) => {
+            const { receiverId, content, type = 'text', fileUrl, fileName } = data;
             console.log(`[MESSAGE] From ${socket.userId} to ${receiverId}: ${content}`);
 
             // Save to DB
@@ -49,18 +51,46 @@ export const initializeSocket = (io: Server) => {
                     sender: socket.userId,
                     receiver: receiverId,
                     content,
-                    type
+                    type,
+                    ...(fileUrl && { fileUrl }),
+                    ...(fileName && { fileName }),
                 });
 
                 // Emit to receiver
                 io.to(receiverId).emit('receive_message', message);
                 // Emit back to sender (confirm/update UI)
                 socket.emit('message_sent', message);
+
+                // ── Push notification ─────────────────────────────────────
+                try {
+                    const sender = await User.findById(socket.userId).select('name').lean();
+                    const senderName = (sender as any)?.name ?? 'Someone';
+                    const preview = type === 'text'
+                        ? (content.length > 60 ? content.slice(0, 60) + '…' : content)
+                        : type === 'image' ? '📷 Sent an image' : '📎 Sent a file';
+
+                    const notification = await Notification.create({
+                        recipient: receiverId,
+                        message: `${senderName}: ${preview}`,
+                        type: 'message',
+                        relatedId: message._id,
+                        link: `/chat/${socket.userId}`,
+                    });
+
+                    // Push live notification to receiver
+                    io.to(receiverId).emit('receive_notification', notification);
+                } catch (notifErr) {
+                    // Non-critical – don't fail the message send
+                    console.error('[NOTIFICATION] Failed to create message notification:', notifErr);
+                }
+                // ─────────────────────────────────────────────────────────
+
             } catch (err) {
                 console.error('[MESSAGE] Error saving message:', err);
                 socket.emit('error', { message: 'Failed to send message' });
             }
         });
+
 
         // Handle deleting messages
         socket.on('delete_message', async (data: { messageId: string; receiverId: string; type: 'me' | 'everyone' }) => {

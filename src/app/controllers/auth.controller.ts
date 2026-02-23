@@ -17,6 +17,7 @@ export const login = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
+      token: result.token,
       user: result.user,
     });
   } catch (err: any) {
@@ -39,6 +40,7 @@ export const register = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       success: true,
+      token: result.token,
       user: result.user,
     });
   } catch (err: any) {
@@ -70,6 +72,14 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     if (req.file) {
       data.image = `/uploads/${req.file.filename}`;
+    }
+
+    if (data.preferences && typeof data.preferences === 'string') {
+      try {
+        data.preferences = JSON.parse(data.preferences);
+      } catch (err) {
+        console.error('Failed to parse preferences:', err);
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, data, {

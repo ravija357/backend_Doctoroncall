@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface INotification extends Document {
     recipient: mongoose.Types.ObjectId;
     message: string;
-    type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+    type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'message' | 'appointment';
     relatedId?: string; // e.g., Appointment ID
     link?: string; // URL to redirect to
     isRead: boolean;
@@ -13,7 +13,7 @@ export interface INotification extends Document {
 const NotificationSchema: Schema = new Schema({
     recipient: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     message: { type: String, required: true },
-    type: { type: String, enum: ['INFO', 'SUCCESS', 'WARNING', 'ERROR'], default: 'INFO' },
+    type: { type: String, enum: ['INFO', 'SUCCESS', 'WARNING', 'ERROR', 'message', 'appointment'], default: 'INFO' },
     relatedId: { type: String },
     link: { type: String },
     isRead: { type: Boolean, default: false },

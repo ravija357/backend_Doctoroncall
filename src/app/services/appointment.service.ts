@@ -38,6 +38,15 @@ export class AppointmentService {
                 status: 'confirmed'
             });
 
+            // Update Doctor Stats (Atomic increment)
+            await this.doctorRepo.update(doctorId, {
+                $inc: {
+                    totalVisits: 1,
+                    totalPatients: 1,
+                    totalRevenue: doctor.fees || 0
+                }
+            } as any);
+
             // Notify Doctor
             // doctor.user is the User ObjectId
             await this.notificationService.createNotification({
