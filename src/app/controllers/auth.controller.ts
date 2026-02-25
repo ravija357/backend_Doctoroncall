@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import { NotificationService } from '../services/notification.service';
 import User from '../models/User.model';
 
 const authService = new AuthService();
@@ -85,6 +86,18 @@ export const updateProfile = async (req: Request, res: Response) => {
     const user = await User.findByIdAndUpdate(req.params.id, data, {
       new: true,
     }).select('-password');
+
+    try {
+      const notificationService = new NotificationService();
+      await notificationService.createNotification({
+        recipient: req.params.id,
+        message: 'Profile updated successfully',
+        type: 'SUCCESS',
+        link: '/profile'
+      });
+    } catch (e) {
+      console.warn('Could not send profile update notification', e);
+    }
 
     return res.json({
       success: true,

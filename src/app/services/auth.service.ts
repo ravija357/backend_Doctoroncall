@@ -23,8 +23,11 @@ export class AuthService {
     return {
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
-        role: user.role
+        role: user.role,
+        image: user.image || null,
       },
       token
     };
@@ -50,8 +53,11 @@ export class AuthService {
     return {
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
-        role: user.role
+        role: user.role,
+        image: user.image || null,
       },
       token
     };

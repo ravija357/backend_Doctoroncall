@@ -2,6 +2,7 @@ import { AppointmentRepository } from '../repositories/appointment.repository';
 import { AvailabilityRepository } from '../repositories/availability.repository';
 import { CreateAppointmentDto } from '../dto/appointment.dto';
 import { DoctorRepository } from '../repositories/doctor.repository';
+import { generateSlots } from '../utils/slot-generator.util';
 
 import { NotificationService } from './notification.service';
 import { getIO } from '../socket/socket.controller';
@@ -20,7 +21,24 @@ export class AppointmentService {
         const doctor = await this.doctorRepo.findById(doctorId);
         if (!doctor) throw new Error('Doctor not found');
 
-        // 2. Try to lock/book the slot atomically
+        // 2. Ensure availability record exists before booking
+        let availability = await this.availabilityRepo.findByDoctorAndDate(doctorId, appointmentDate);
+        if (!availability) {
+            // Auto-generate slots from doctor's schedule or use defaults
+            const dayName = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' });
+            const schedule = doctor.schedules.find((s: any) => s.day === dayName);
+
+            let slots: any[];
+            if (schedule && !schedule.isOff) {
+                slots = generateSlots(appointmentDate, schedule.startTime, schedule.endTime);
+            } else {
+                // Default 9am-5pm, 30-min slots
+                slots = generateSlots(appointmentDate, '09:00', '17:00');
+            }
+            availability = await this.availabilityRepo.createOrUpdate(doctorId, appointmentDate, slots);
+        }
+
+        // 3. Try to lock/book the slot atomically
         const booked = await this.availabilityRepo.bookSlot(doctorId, appointmentDate, startTime);
         if (!booked) {
             throw new Error('Slot already booked or not available');
@@ -48,13 +66,23 @@ export class AppointmentService {
             } as any);
 
             // Notify Doctor
-            // doctor.user is the User ObjectId
+            // doctor.user may be populated or just an ObjectId
+            const doctorUserId = (doctor.user as any)._id?.toString() || (doctor.user as any).toString();
             await this.notificationService.createNotification({
-                recipient: (doctor.user as any).toString(),
-                message: `New appointment detailed for ${date} at ${startTime}`,
+                recipient: doctorUserId,
+                message: `New appointment scheduled for ${date} at ${startTime}`,
                 type: 'INFO',
                 relatedId: appointment._id.toString(),
                 link: `/doctor/appointments`
+            });
+
+            // Notify Patient
+            await this.notificationService.createNotification({
+                recipient: patientId as string,
+                message: `Your appointment is confirmed for ${date} at ${startTime}`,
+                type: 'SUCCESS',
+                relatedId: appointment._id.toString(),
+                link: `/appointments`
             });
 
             // Emit socket event for real-time dashboard updates
@@ -138,14 +166,23 @@ export class AppointmentService {
 
         // Notify the OTHER party
         const notifyRecipientId = userId === patientId ? doctorUserId : patientId;
-        const message = userId === patientId
+        const messageOther = userId === patientId
             ? `Appointment cancelled by patient`
             : `Appointment cancelled by doctor`;
 
         await this.notificationService.createNotification({
             recipient: notifyRecipientId,
-            message: message,
+            message: messageOther,
             type: 'WARNING',
+            relatedId: id,
+            link: `/appointments`
+        });
+
+        // Notify the SUBMITTER
+        await this.notificationService.createNotification({
+            recipient: userId,
+            message: `You successfully cancelled the appointment`,
+            type: 'SUCCESS',
             relatedId: id,
             link: `/appointments`
         });
