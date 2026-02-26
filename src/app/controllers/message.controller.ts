@@ -80,11 +80,25 @@ export const getContacts = async (req: Request, res: Response, next: NextFunctio
             {
                 $project: {
                     id: "$userDetails._id",
-                    name: { $concat: ["$userDetails.firstName", " ", "$userDetails.lastName"] },
+                    name: {
+                        $ifNull: [
+                            { $trim: { input: { $concat: ["$userDetails.firstName", " ", "$userDetails.lastName"] } } },
+                            "$userDetails.email"
+                        ]
+                    },
                     image: "$userDetails.image",
                     role: "$userDetails.role",
                     email: "$userDetails.email",
-                    lastMessage: "$lastMessage.content",
+                    lastMessage: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ["$lastMessage.type", "image"] }, then: "📷 Photo" },
+                                { case: { $eq: ["$lastMessage.type", "file"] }, then: "📎 Attachment" },
+                                { case: { $eq: ["$lastMessage.type", "call_log"] }, then: "📞 Call" }
+                            ],
+                            default: "$lastMessage.content"
+                        }
+                    },
                     lastMessageTime: "$lastMessage.createdAt",
                     unread: "$unreadCount"
                 }
@@ -141,6 +155,17 @@ export const markAsRead = async (req: Request, res: Response, next: NextFunction
             success: true,
             message: 'Messages marked as read'
         });
+
+        // Emit sync event to all user's devices
+        try {
+            const { emitToUser } = require('../socket/socket.controller');
+            emitToUser(currentUserId, 'notification_sync', {
+                type: 'messages_read',
+                senderId: senderId
+            });
+        } catch (syncErr) {
+            console.error('[SYNC] Failed to emit message_read sync:', syncErr);
+        }
     } catch (error) {
         next(new AppError('Error marking messages as read', 500));
     }

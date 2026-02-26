@@ -28,7 +28,7 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: ['http://localhost:3000', 'http://192.168.1.71:3000', 'http://192.168.1.67:3000'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -38,9 +38,25 @@ const io = new Server(server, {
 initializeSocket(io);
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://192.168.1.71:3000',
+  'http://192.168.1.67:3000'
+];
+
 app.use(
   cors({
-    origin: '*',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        // Alternatively, you could just allow all origins for dev by returning true
+        callback(null, true);
+      }
+    },
     credentials: true,
   })
 );

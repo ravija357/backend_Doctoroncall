@@ -5,7 +5,7 @@ import { DoctorRepository } from '../repositories/doctor.repository';
 import { generateSlots } from '../utils/slot-generator.util';
 
 import { NotificationService } from './notification.service';
-import { getIO } from '../socket/socket.controller';
+import { getIO, emitToUser } from '../socket/socket.controller';
 
 export class AppointmentService {
     private appointmentRepo = new AppointmentRepository();
@@ -15,7 +15,8 @@ export class AppointmentService {
 
     async createAppointment(patientId: string, dto: CreateAppointmentDto) {
         const { doctorId, date, startTime, endTime } = dto;
-        const appointmentDate = new Date(date);
+        // Parse date as pure UTC so '2026-02-28' doesn't shift to '2026-02-27T19:00:00Z' locally
+        const appointmentDate = new Date(`${date}T00:00:00Z`);
 
         // 1. Verify Doctor exists
         const doctor = await this.doctorRepo.findById(doctorId);
@@ -53,7 +54,7 @@ export class AppointmentService {
                 startTime,
                 endTime,
                 reason: dto.reason,
-                status: 'confirmed'
+                status: 'pending' // Changed from confirmed to pending
             });
 
             // Update Doctor Stats (Atomic increment)
@@ -85,12 +86,13 @@ export class AppointmentService {
                 link: `/appointments`
             });
 
-            // Emit socket event for real-time dashboard updates
+            // Emit socket event for real-time dashboard updates (Facebook-like sync)
             try {
-                const io = getIO();
-                io.emit('appointment_updated', { doctorId: doctorId.toString() });
+                // Notify both Patient and Doctor rooms
+                emitToUser(patientId, 'appointment_sync', { id: appointment._id });
+                emitToUser(doctorUserId, 'appointment_sync', { id: appointment._id });
             } catch (err) {
-                console.warn('[SOCKET] Could not emit appointment_updated:', err);
+                console.warn('[SOCKET] Could not emit appointment_sync:', err);
             }
 
             return appointment;
@@ -113,13 +115,14 @@ export class AppointmentService {
         const updated = await this.appointmentRepo.updateStatus(id, status);
         if (updated) {
             try {
-                const io = getIO();
-                // We need the doctorId. If populate is not done by updateStatus, we manually fetch or assume it's returned.
-                // Assuming it's a populated or normal ObjectId
-                const doctorId = (updated.doctor as any)._id?.toString() || updated.doctor.toString();
-                io.emit('appointment_updated', { doctorId });
+                const doctorUserId = (updated.doctor as any).user?._id?.toString() || (updated.doctor as any).user?.toString();
+                const patientId = (updated.patient as any)._id?.toString() || updated.patient.toString();
+
+                // Notify both Patient and Doctor rooms
+                if (patientId) emitToUser(patientId, 'appointment_sync', { id: updated._id, status });
+                if (doctorUserId) emitToUser(doctorUserId, 'appointment_sync', { id: updated._id, status });
             } catch (err) {
-                console.warn('[SOCKET] Could not emit appointment_updated:', err);
+                console.warn('[SOCKET] Could not emit appointment_sync:', err);
             }
         }
         return updated;
@@ -189,10 +192,10 @@ export class AppointmentService {
 
         // Emit socket event for real-time dashboard updates
         try {
-            const io = getIO();
-            io.emit('appointment_updated', { doctorId });
+            emitToUser(patientId, 'appointment_sync', { id, status: 'cancelled' });
+            emitToUser(doctorUserId, 'appointment_sync', { id, status: 'cancelled' });
         } catch (err) {
-            console.warn('[SOCKET] Could not emit appointment_updated:', err);
+            console.warn('[SOCKET] Could not emit appointment_sync:', err);
         }
 
         return updatedAppointment;

@@ -17,6 +17,15 @@ export const sendNotificationToUser = (userId: string, notification: any) => {
     ioInstance.to(userId).emit('receive_notification', notification);
 };
 
+/**
+ * Sends a sync event to all devices (Mobile/Web) that the specific user is logged into.
+ * This is the core of the "Facebook-like" synchronization.
+ */
+export const emitToUser = (userId: string, event: string, data: any) => {
+    if (!ioInstance) return;
+    ioInstance.to(userId.toString()).emit(event, data);
+};
+
 export const initializeSocket = (io: Server) => {
     ioInstance = io;
     // Middleware to verify user (simplified for now, ideally use JWT)
@@ -57,32 +66,21 @@ export const initializeSocket = (io: Server) => {
                 });
 
                 // Emit to receiver
-                io.to(receiverId).emit('receive_message', message);
+                const sender = await User.findById(socket.userId).select('firstName lastName').lean();
+                const senderName = sender ? `${sender.firstName} ${sender.lastName}`.trim() : 'Someone';
+
+                io.to(receiverId).emit('receive_message', {
+                    ...message.toObject(),
+                    senderName
+                });
+
                 // Emit back to sender (confirm/update UI)
                 socket.emit('message_sent', message);
 
-                // ── Push notification ─────────────────────────────────────
-                try {
-                    const sender = await User.findById(socket.userId).select('name').lean();
-                    const senderName = (sender as any)?.name ?? 'Someone';
-                    const preview = type === 'text'
-                        ? (content.length > 60 ? content.slice(0, 60) + '…' : content)
-                        : type === 'image' ? '📷 Sent an image' : '📎 Sent a file';
-
-                    const notification = await Notification.create({
-                        recipient: receiverId,
-                        message: `${senderName}: ${preview}`,
-                        type: 'message',
-                        relatedId: message._id,
-                        link: `/chat/${socket.userId}`,
-                    });
-
-                    // Push live notification to receiver
-                    io.to(receiverId).emit('receive_notification', notification);
-                } catch (notifErr) {
-                    // Non-critical – don't fail the message send
-                    console.error('[NOTIFICATION] Failed to create message notification:', notifErr);
-                }
+                // ── Real-time Notification (Signal Only) ──────────────────
+                // We don't save messages to the Notification collection anymore to avoid cluttering human-readable notifications.
+                // We just emit receive_message to the receiver so they get a popup/badge.
+                // receive_message is emitted above line 70.
                 // ─────────────────────────────────────────────────────────
 
             } catch (err) {

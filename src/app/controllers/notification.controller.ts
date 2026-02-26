@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Notification from '../models/Notification.model';
+import { emitToUser } from '../socket/socket.controller';
 
 export const getUserNotifications = async (req: Request | any, res: Response) => {
     try {
@@ -19,6 +20,10 @@ export const markAsRead = async (req: Request | any, res: Response) => {
     try {
         const { id } = req.params;
         await Notification.findByIdAndUpdate(id, { isRead: true });
+
+        // Sync across devices
+        emitToUser(req.user.id, 'notification_sync', { action: 'mark_read', id });
+
         return res.json({ success: true, message: 'Marked as read' });
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });
@@ -28,6 +33,10 @@ export const markAsRead = async (req: Request | any, res: Response) => {
 export const markAllAsRead = async (req: Request | any, res: Response) => {
     try {
         await Notification.updateMany({ recipient: req.user.id, isRead: false }, { isRead: true });
+
+        // Sync across devices
+        emitToUser(req.user.id, 'notification_sync', { action: 'mark_all_read' });
+
         return res.json({ success: true, message: 'All marked as read' });
     } catch (error: any) {
         return res.status(500).json({ success: false, message: error.message });

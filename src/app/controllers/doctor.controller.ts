@@ -48,7 +48,7 @@ export const getDoctorById = async (req: Request, res: Response) => {
     }
 };
 
-import { getIO } from '../socket/socket.controller';
+import { getIO, emitToUser } from '../socket/socket.controller';
 
 // ... (existing imports)
 
@@ -70,8 +70,10 @@ export const updateProfile = async (req: Request | any, res: Response) => {
                     fees: updated.fees,
                     specialization: updated.specialization
                 });
+                // Targeted sync for the doctor's own devices (Facebook-like)
+                emitToUser(req.user.id, 'profile_sync', { id: updated._id });
             } catch (err) {
-                console.error('[SOCKET] Failed to emit doctor_profile_updated:', err);
+                console.error('[SOCKET] Failed to emit doctor_profile_sync:', err);
             }
         }
 
@@ -96,8 +98,10 @@ export const updateSchedule = async (req: Request | any, res: Response) => {
             try {
                 const io = getIO();
                 io.emit('schedule_updated', { doctorId: doctor._id });
+                // Targeted sync for the doctor's own devices (Facebook-like)
+                emitToUser(req.user.id, 'schedule_sync', { id: doctor._id });
             } catch (err) {
-                console.error('[SOCKET] Failed to emit schedule_updated:', err);
+                console.error('[SOCKET] Failed to emit doctor_schedule_sync:', err);
             }
         }
 
