@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 import User from '../models/User.model';
+import { emitToUser } from '../socket/socket.controller';
 
 const authService = new AuthService();
 
@@ -98,6 +99,8 @@ export const updateProfile = async (req: Request, res: Response) => {
     } catch (e) {
       console.warn('Could not send profile update notification', e);
     }
+
+    emitToUser(req.params.id, 'profile_sync', user);
 
     return res.json({
       success: true,

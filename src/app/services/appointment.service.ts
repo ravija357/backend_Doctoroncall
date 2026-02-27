@@ -141,7 +141,16 @@ export class AppointmentService {
             throw new Error('Unauthorized to delete this appointment');
         }
 
-        return this.appointmentRepo.deleteById(id);
+        const deleted = await this.appointmentRepo.deleteById(id);
+        if (deleted) {
+            try {
+                emitToUser(patientId, 'appointment_sync', { id, status: 'deleted' });
+                emitToUser(doctorUserId, 'appointment_sync', { id, status: 'deleted' });
+            } catch (err) {
+                console.warn('[SOCKET] Could not emit appointment_sync:', err);
+            }
+        }
+        return deleted;
     }
 
     async cancelAppointment(id: string, userId: string) {
