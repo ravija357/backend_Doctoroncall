@@ -53,6 +53,7 @@ export class ReviewService {
                     averageRating: avgRating,
                     totalReviews: totalReviews
                 });
+                io.emit('review_sync', { doctorId });
             } catch (ioError) {
                 console.warn('[SOCKET] Could not emit doctor_rating_updated:', ioError);
             }

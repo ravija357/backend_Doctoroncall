@@ -28,7 +28,7 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:3000', 'http://192.168.1.71:3000', 'http://192.168.1.67:3000'],
+    origin: ['http://localhost:3000', 'http://10.1.7.250:3000', 'http://192.168.1.67:3000'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -40,7 +40,7 @@ initializeSocket(io);
 // Middleware
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://192.168.1.71:3000',
+  'http://10.1.7.250:3000',
   'http://192.168.1.67:3000'
 ];
 
@@ -101,5 +101,5 @@ app.all('*', (req: express.Request, _res: express.Response, next: express.NextFu
 app.use(globalErrorHandler);
 
 server.listen(Number(env.PORT), '0.0.0.0', () => {
-  console.log(`🚀 Backend running on http://192.168.1.67:${env.PORT}`);
+  console.log(`🚀 Backend running on http://10.1.7.250:${env.PORT}`);
 });
