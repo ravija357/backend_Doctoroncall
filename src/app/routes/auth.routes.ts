@@ -9,6 +9,7 @@ const router = Router();
  * POST /api/auth/login
  */
 router.post('/login', AuthController.login);
+router.post('/google', AuthController.googleLogin);
 
 /**
  * POST /api/auth/register

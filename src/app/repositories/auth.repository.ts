@@ -8,4 +8,8 @@ export class AuthRepository {
   create(data: Partial<IUser>): Promise<IUser> {
     return User.create(data);
   }
+
+  findByGoogleId(googleId: string): Promise<IUser | null> {
+    return User.findOne({ googleId });
+  }
 }
