@@ -36,14 +36,22 @@ export const initializeSocket = (io: Server) => {
         next();
     });
 
-    const onlineUsers = new Map<string, string>(); // userId -> socketId
+    const onlineUsers = new Map<string, number>(); // userId -> connection count (multi-tab support)
 
     io.on('connection', (socket: Socket | any) => {
         console.log(`[SOCKET] User connected: ${socket.userId} (Socket ID: ${socket.id})`);
-        onlineUsers.set(socket.userId, socket.id);
 
-        // Notify friends/everyone that user is online
-        io.emit('user_online', { userId: socket.userId });
+        // Increment connection count (multi-tab: user stays online until all tabs close)
+        const prevCount = onlineUsers.get(socket.userId) || 0;
+        onlineUsers.set(socket.userId, prevCount + 1);
+
+        // Send current online user list to just this newly connected socket
+        socket.emit('online_users_list', Array.from(onlineUsers.keys()));
+
+        // If this is their first connection, broadcast to everyone else
+        if (prevCount === 0) {
+            socket.broadcast.emit('user_online', { userId: socket.userId });
+        }
 
         // Join a personal room for private messaging
         socket.join(socket.userId);
@@ -184,8 +192,16 @@ export const initializeSocket = (io: Server) => {
 
         socket.on('disconnect', () => {
             console.log(`[SOCKET] User disconnected: ${socket.userId}`);
-            onlineUsers.delete(socket.userId);
-            io.emit('user_offline', { userId: socket.userId });
+            const count = (onlineUsers.get(socket.userId) || 1) - 1;
+            if (count <= 0) {
+                onlineUsers.delete(socket.userId);
+                // Only broadcast offline when ALL tabs are closed
+                io.emit('user_offline', { userId: socket.userId });
+                console.log(`[SOCKET] User ${socket.userId} is now offline`);
+            } else {
+                onlineUsers.set(socket.userId, count);
+                console.log(`[SOCKET] User ${socket.userId} still has ${count} active connection(s)`);
+            }
         });
     });
 };

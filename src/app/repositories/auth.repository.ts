@@ -12,4 +12,8 @@ export class AuthRepository {
   findByGoogleId(googleId: string): Promise<IUser | null> {
     return User.findOne({ googleId });
   }
+
+  findByAppleId(appleId: string): Promise<IUser | null> {
+    return User.findOne({ appleId });
+  }
 }

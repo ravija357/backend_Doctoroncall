@@ -28,7 +28,7 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:3000', 'http://10.1.7.250:3000', 'http://192.168.1.67:3000', 'http://Ravis-MacBook-Air.local:3000'],
+    origin: ['http://localhost:3000', 'http://10.1.7.250:3000', 'http://192.168.1.67:3000', 'http://192.168.1.71:3000', 'http://Ravis-MacBook-Air.local:3000'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -42,6 +42,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://10.1.7.250:3000',
   'http://192.168.1.67:3000',
+  'http://192.168.1.71:3000',
   'http://Ravis-MacBook-Air.local:3000'
 ];
 

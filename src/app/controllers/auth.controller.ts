@@ -32,8 +32,8 @@ export const login = async (req: Request, res: Response) => {
 
 export const googleLogin = async (req: Request, res: Response) => {
   try {
-    const { idToken } = req.body;
-    const result = await authService.googleLogin(idToken);
+    const { idToken, role } = req.body;
+    const result = await authService.googleLogin(idToken, role);
 
     res.cookie('token', result.token, {
       httpOnly: true,
@@ -47,7 +47,8 @@ export const googleLogin = async (req: Request, res: Response) => {
       user: result.user,
     });
   } catch (err: any) {
-    return res.status(400).json({
+    const status = err.message.includes('Access denied') ? 403 : 400;
+    return res.status(status).json({
       success: false,
       message: err.message,
     });
@@ -82,6 +83,16 @@ export const getMe = async (req: Request | any, res: Response) => {
     success: true,
     user: req.user,
   });
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    return res.status(200).json({ success: true, user });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 export const logout = async (_req: Request, res: Response) => {
@@ -132,6 +143,31 @@ export const updateProfile = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+export const appleLogin = async (req: Request, res: Response) => {
+  try {
+    const { idToken, role } = req.body;
+    const result = await authService.appleLogin(idToken, role);
+
+    res.cookie('token', result.token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      token: result.token,
+      user: result.user,
+    });
+  } catch (err: any) {
+    const status = err.message.includes('Access denied') ? 403 : 400;
+    return res.status(status).json({
       success: false,
       message: err.message,
     });

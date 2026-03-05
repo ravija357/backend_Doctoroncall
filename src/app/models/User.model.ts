@@ -5,6 +5,7 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   googleId?: string;
+  appleId?: string;
   firstName: string;
   lastName: string;
   role: string;
@@ -21,6 +22,7 @@ const userSchema = new mongoose.Schema<IUser>({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: false },
   googleId: { type: String, unique: true, sparse: true },
+  appleId: { type: String, unique: true, sparse: true },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   role: { type: String, default: 'user' },

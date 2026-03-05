@@ -177,8 +177,8 @@ export const uploadFile = async (req: Request, res: Response, next: NextFunction
             return next(new AppError('No file uploaded', 400));
         }
 
-        // Construct public URL
-        const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        // Construct relative URL so the frontend can prepend its own dynamic base URL
+        const fileUrl = `/uploads/${req.file.filename}`;
 
         res.status(200).json({
             success: true,

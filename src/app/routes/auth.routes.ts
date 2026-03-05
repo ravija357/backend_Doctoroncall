@@ -10,6 +10,7 @@ const router = Router();
  */
 router.post('/login', AuthController.login);
 router.post('/google', AuthController.googleLogin);
+router.post('/apple', AuthController.appleLogin);
 
 /**
  * POST /api/auth/register
@@ -21,6 +22,7 @@ router.post('/register', AuthController.register);
  * Get logged-in user (from token)
  */
 router.get('/me', authMiddleware, AuthController.getMe);
+router.get('/user/:id', authMiddleware, AuthController.getUserById);
 router.post('/logout', AuthController.logout);
 
 /**
