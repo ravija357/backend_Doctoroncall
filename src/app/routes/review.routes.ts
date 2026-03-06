@@ -6,5 +6,6 @@ const router = Router();
 
 router.post('/', authMiddleware, ReviewController.createReview);
 router.get('/:doctorId', ReviewController.getDoctorReviews);
+router.delete('/:id', authMiddleware, ReviewController.deleteReview);
 
 export default router;

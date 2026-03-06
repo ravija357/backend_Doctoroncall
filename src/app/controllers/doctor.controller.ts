@@ -54,12 +54,17 @@ import { getIO, emitToUser } from '../socket/socket.controller';
 
 export const updateProfile = async (req: Request | any, res: Response) => {
     try {
+        console.log('[DEBUG] updateProfile called for user:', req.user.id);
+        console.log('[DEBUG] req.body:', req.body);
+
         const doctorProfile = await doctorService.getProfile(req.user.id);
         if (!doctorProfile) {
+            console.log('[DEBUG] Doctor profile not found for user:', req.user.id);
             return res.status(404).json({ success: false, message: 'Doctor profile not found' });
         }
 
         const updated = await doctorService.updateProfile(doctorProfile._id.toString(), req.body);
+        console.log('[DEBUG] Updated doctor profile successfully:', !!updated);
 
         // Notify about profile update (fees, etc)
         if (updated) {

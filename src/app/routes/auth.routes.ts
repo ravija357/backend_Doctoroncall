@@ -36,4 +36,16 @@ router.put(
   AuthController.updateProfile
 );
 
+/**
+ * POST /api/auth/forgot-password
+ * Sends a password reset email with a secure token link.
+ */
+router.post('/forgot-password', AuthController.forgotPassword);
+
+/**
+ * POST /api/auth/reset-password
+ * Validates the token and updates the user password.
+ */
+router.post('/reset-password', AuthController.resetPassword);
+
 export default router;

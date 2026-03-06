@@ -9,6 +9,7 @@ const authService = new AuthService();
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password, role } = req.body;
+    console.log(`[CONTROLLER DEBUG] Login Request: email="${email}", role="${role}", passLength=${password?.length}`);
     const result = await authService.login({ email, password, role });
 
     res.cookie('token', result.token, {
@@ -171,5 +172,87 @@ export const appleLogin = async (req: Request, res: Response) => {
       success: false,
       message: err.message,
     });
+  }
+};
+
+/* ─── Forgot Password ─────────────────────────────────── */
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    // Always respond with success to avoid user enumeration attacks
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: 'If that email exists, a reset link has been sent.',
+      });
+    }
+
+    // Generate secure random token
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = expires;
+    await user.save();
+
+    // Send email
+    const { sendPasswordResetEmail } = await import('../services/email.service');
+    await sendPasswordResetEmail(user.email, user.firstName, token);
+
+    return res.status(200).json({
+      success: true,
+      message: 'If that email exists, a reset link has been sent.',
+    });
+  } catch (err: any) {
+    console.error('[forgotPassword] Error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to process request.' });
+  }
+};
+
+/* ─── Reset Password ─────────────────────────────────── */
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required.' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() }, // token must not be expired
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset link is invalid or has expired. Please request a new one.',
+      });
+    }
+
+    // Set new password — the pre-save hook will hash it
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully. You can now sign in with your new password.',
+    });
+  } catch (err: any) {
+    console.error('[resetPassword] Error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to reset password.' });
   }
 };

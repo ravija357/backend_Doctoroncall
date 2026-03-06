@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import User from '../models/User.model';
 import Doctor from '../models/Doctor.model';
+import Appointment from '../models/Appointment.model';
 import bcrypt from 'bcryptjs';
 
 export class AdminController {
@@ -68,6 +69,30 @@ export class AdminController {
       return res.json({ success: true, message: 'Doctor verified successfully', data: doctor });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getDashboardStats(_req: Request, res: Response) {
+    try {
+      const [totalUsers, activeDoctors, recentBookings] = await Promise.all([
+        User.countDocuments(),
+        Doctor.countDocuments({ isVerified: true }),
+        Appointment.countDocuments({
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        })
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          totalUsers,
+          activeDoctors,
+          recentBookings,
+          systemStatus: "Optimal"
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }

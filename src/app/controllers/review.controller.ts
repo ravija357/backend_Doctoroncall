@@ -27,3 +27,14 @@ export const getDoctorReviews = async (req: Request, res: Response) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const deleteReview = async (req: Request | any, res: Response) => {
+    try {
+        const { id } = req.params;
+        await reviewService.deleteReview(id, req.user.id);
+        return res.json({ success: true, message: 'Review deleted successfully' });
+    } catch (error: any) {
+        const status = error.message === 'Review not found' ? 404 : 400;
+        return res.status(status).json({ success: false, message: error.message });
+    }
+};

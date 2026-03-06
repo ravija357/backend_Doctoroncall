@@ -10,11 +10,16 @@ export interface IUser extends Document {
   lastName: string;
   role: string;
   image?: string;
+  phone?: string;
+  bio?: string;
+  address?: string;
   preferences: {
     darkMode: boolean;
     notifications: boolean;
     newsletter: boolean;
   };
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   comparePassword(password: string): Promise<boolean>;
 }
 
@@ -27,11 +32,16 @@ const userSchema = new mongoose.Schema<IUser>({
   lastName: { type: String, required: true },
   role: { type: String, default: 'user' },
   image: { type: String, default: null },
+  phone: { type: String, default: '' },
+  bio: { type: String, default: '' },
+  address: { type: String, default: '' },
   preferences: {
     darkMode: { type: Boolean, default: false },
     notifications: { type: Boolean, default: true },
     newsletter: { type: Boolean, default: false },
   },
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null },
 });
 
 userSchema.pre('save', async function () {

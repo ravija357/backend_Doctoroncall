@@ -24,6 +24,24 @@ export class ReviewService {
         return Review.find({ doctor: doctorId }).populate('patient', 'firstName lastName email image');
     }
 
+
+    async deleteReview(reviewId: string, patientId: string) {
+        const review = await Review.findById(reviewId);
+        if (!review) throw new Error('Review not found');
+
+        if (review.patient.toString() !== patientId) {
+            throw new Error('Unauthorized to delete this review');
+        }
+
+        const doctorId = review.doctor.toString();
+        await Review.findByIdAndDelete(reviewId);
+
+        // Update Doctor Stats (Aggregated) after deletion
+        await this.updateDoctorStats(doctorId);
+
+        return true;
+    }
+
     private async updateDoctorStats(doctorId: string) {
         const stats = await Review.aggregate([
             { $match: { doctor: new mongoose.Types.ObjectId(doctorId) } },

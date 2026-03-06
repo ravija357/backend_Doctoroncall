@@ -7,13 +7,13 @@ export class AvailabilityService {
     private repo = new AvailabilityRepository();
 
     async setAvailability(doctorId: string, dto: AvailabilityDto) {
-        return this.repo.createOrUpdate(doctorId, new Date(dto.date), dto.slots);
+        return this.repo.createOrUpdate(doctorId, new Date(`${dto.date}T00:00:00Z`), dto.slots);
     }
 
     private doctorRepo = new DoctorRepository();
 
     async getAvailability(doctorId: string, dateStr: string) {
-        const date = new Date(dateStr);
+        const date = new Date(`${dateStr}T00:00:00Z`);
         let availability = await this.repo.findByDoctorAndDate(doctorId, date);
 
         if (!availability) {

@@ -3,6 +3,7 @@ import { AvailabilityRepository } from '../repositories/availability.repository'
 import { CreateAppointmentDto } from '../dto/appointment.dto';
 import { DoctorRepository } from '../repositories/doctor.repository';
 import { generateSlots } from '../utils/slot-generator.util';
+import mongoose from 'mongoose';
 
 import { NotificationService } from './notification.service';
 import { getIO, emitToUser } from '../socket/socket.controller';
@@ -48,13 +49,13 @@ export class AppointmentService {
         try {
             // 3. Create Appointment
             const appointment = await this.appointmentRepo.create({
-                patient: patientId as any,
-                doctor: doctorId as any,
+                patient: new mongoose.Types.ObjectId(patientId) as any,
+                doctor: doctor._id,
                 date: appointmentDate,
                 startTime,
                 endTime,
                 reason: dto.reason,
-                status: 'pending' // Changed from confirmed to pending
+                status: 'pending'
             });
 
             // Update Doctor Stats (Atomic increment)
@@ -96,7 +97,8 @@ export class AppointmentService {
             }
 
             return appointment;
-        } catch (error) {
+        } catch (error: any) {
+            console.error(`[DEBUG] Appointment Creation Error:`, error.message);
             // Compensation: Unbook the slot if appointment creation fails
             await this.availabilityRepo.unbookSlot(doctorId, appointmentDate, startTime);
             throw error;

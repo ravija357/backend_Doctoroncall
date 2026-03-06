@@ -6,6 +6,21 @@ import type { LoginDto } from '../../dto/login.dto';
 export class AuthService {
   private repo = new AuthRepository();
 
+  private formatUserResponse(user: any) {
+    return {
+      id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      image: user.image || null,
+      phone: user.phone || '',
+      bio: user.bio || '',
+      address: user.address || '',
+      preferences: user.preferences
+    };
+  }
+
   async register(data: RegisterDto) {
     const existingUser = await this.repo.findByEmail(data.email);
     if (existingUser) {
@@ -21,26 +36,31 @@ export class AuthService {
     );
 
     return {
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        image: user.image || null,
-      },
+      user: this.formatUserResponse(user),
       token
     };
   }
 
   async login(data: LoginDto) {
-    const user = await this.repo.findByEmail(data.email);
+    const sanitizedEmail = data.email.trim().toLowerCase();
+    console.log(`[AUTH DEBUG] Attempting login for: "${sanitizedEmail}" with role: "${data.role}"`);
 
-    if (!user || !(await user.comparePassword(data.password))) {
+    const user = await this.repo.findByEmail(sanitizedEmail);
+
+    if (!user) {
+      console.log(`[AUTH DEBUG] User not found: "${sanitizedEmail}"`);
       throw new Error('Invalid email or password');
     }
 
-    if (data.role && user.role !== data.role) {
+    const isMatch = await user.comparePassword(data.password);
+    console.log(`[AUTH DEBUG] Password match for "${sanitizedEmail}": ${isMatch}`);
+
+    if (!isMatch) {
+      throw new Error('Invalid email or password');
+    }
+
+    if (data.role && user.role !== data.role && user.role !== 'admin') {
+      console.log(`[AUTH DEBUG] Role mismatch. User: ${user.role}, Portal: ${data.role}`);
       throw new Error('Access denied. Invalid role for this portal.');
     }
 
@@ -51,14 +71,7 @@ export class AuthService {
     );
 
     return {
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        image: user.image || null,
-      },
+      user: this.formatUserResponse(user),
       token
     };
   }
@@ -137,14 +150,7 @@ export class AuthService {
     );
 
     return {
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        image: user.image || null,
-      },
+      user: this.formatUserResponse(user),
       token
     };
   }
@@ -197,14 +203,7 @@ export class AuthService {
     );
 
     return {
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        image: user.image || null,
-      },
+      user: this.formatUserResponse(user),
       token
     };
   }

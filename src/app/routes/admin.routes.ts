@@ -46,4 +46,11 @@ router.patch(
   controller.verifyDoctor
 );
 
+router.get(
+  '/stats',
+  authMiddleware,
+  adminMiddleware,
+  controller.getDashboardStats
+);
+
 export default router;
