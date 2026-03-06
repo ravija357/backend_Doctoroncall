@@ -66,6 +66,12 @@ export const register = async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    try {
+      const { getIO } = require('../socket/socket.controller');
+      const io = getIO();
+      io.emit('admin_stats_sync');
+    } catch (err) { }
+
     return res.status(201).json({
       success: true,
       token: result.token,

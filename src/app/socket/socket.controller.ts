@@ -180,6 +180,15 @@ export const initializeSocket = (io: Server) => {
             });
         });
 
+        // --- Typing Indicators ---
+        socket.on('typing', (data: { to: string }) => {
+            io.to(data.to).emit('typing', { from: socket.userId });
+        });
+
+        socket.on('stop_typing', (data: { to: string }) => {
+            io.to(data.to).emit('stop_typing', { from: socket.userId });
+        });
+
         socket.on('answer_call', (data: { to: string; signal: any }) => {
             console.log(`[CALL] Answer to Room ${data.to} from ${socket.userId}`);
             io.to(data.to).emit('call_accepted', data.signal);

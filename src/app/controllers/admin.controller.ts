@@ -6,58 +6,102 @@ import bcrypt from 'bcryptjs';
 
 export class AdminController {
   async createUser(req: Request, res: Response) {
-    const { email, password, role } = req.body;
+    try {
+      const { email, password, role } = req.body;
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await User.create({
+        email,
+        password: hashedPassword,
+        role,
+        image: req.file ? `/uploads/${req.file.filename}` : null,
+      });
 
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-      role,
-      image: req.file ? `/uploads/${req.file.filename}` : null,
-    });
+      try {
+        const { getIO } = require('../socket/socket.controller');
+        const io = getIO();
+        io.emit('admin_stats_sync');
+        io.emit('admin_user_sync');
+      } catch (err) {
+        console.error('Socket emission failed:', err);
+      }
 
-    res.status(201).json(user);
+      res.status(201).json(user);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
 
   async getUsers(_req: Request, res: Response) {
-    const users = await User.find().select('-password');
-    res.json(users);
+    try {
+      const users = await User.find().select('-password');
+      res.json(users);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
 
   async getUserById(req: Request, res: Response) {
-    const user = await User.findById(req.params.id).select('-password');
-    res.json(user);
+    try {
+      const user = await User.findById(req.params.id).select('-password');
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
 
   async updateUser(req: Request, res: Response) {
-    const data: any = req.body;
+    try {
+      const data: any = req.body;
 
-    if (req.file) {
-      data.image = `/uploads/${req.file.filename}`;
+      if (req.file) {
+        data.image = `/uploads/${req.file.filename}`;
+      }
+
+      if (data.password) {
+        data.password = await bcrypt.hash(data.password, 10);
+      }
+
+      const user = await User.findByIdAndUpdate(req.params.id, data, {
+        new: true,
+      }).select('-password');
+
+      if (user) {
+        try {
+          const { getIO } = require('../socket/socket.controller');
+          const io = getIO();
+          io.emit('admin_user_sync');
+        } catch (err) {
+          console.error('Socket emission failed:', err);
+        }
+      }
+
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
     }
-
-    const user = await User.findByIdAndUpdate(req.params.id, data, {
-      new: true,
-    }).select('-password');
-
-    res.json(user);
   }
 
   async deleteUser(req: Request, res: Response) {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'User deleted successfully' });
+    try {
+      await User.findByIdAndDelete(req.params.id);
+      try {
+        const { getIO } = require('../socket/socket.controller');
+        const io = getIO();
+        io.emit('admin_user_sync');
+        io.emit('admin_stats_sync');
+      } catch (err) {
+        console.error('Socket emission failed:', err);
+      }
+      res.json({ message: 'User deleted successfully' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
 
   async verifyDoctor(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      // Find doctor by user ID or doctor ID? Route params usually ID.
-      // Let's assume ID is Doctor ID for specificity, or User ID.
-      // Given it's admin/doctors/:id, let's allow passing Doctor ID.
-
-      // const Doctor = require('../models/Doctor.model').default; // Dynamic import to avoid circular dependency if any? No, just standard import
-
       const doctor = await Doctor.findById(id);
       if (!doctor) {
         return res.status(404).json({ success: false, message: 'Doctor profile not found' });
@@ -65,6 +109,16 @@ export class AdminController {
 
       doctor.isVerified = true;
       await doctor.save();
+
+      try {
+        const { getIO, emitToUser } = require('../socket/socket.controller');
+        const io = getIO();
+        io.emit('admin_stats_sync');
+        const userId = doctor.user.toString();
+        emitToUser(userId, 'profile_sync', { id: doctor._id, isVerified: true });
+      } catch (err) {
+        console.error('Socket emission failed:', err);
+      }
 
       return res.json({ success: true, message: 'Doctor verified successfully', data: doctor });
     } catch (error: any) {

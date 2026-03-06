@@ -92,6 +92,10 @@ export class AppointmentService {
                 // Notify both Patient and Doctor rooms
                 emitToUser(patientId, 'appointment_sync', { id: appointment._id });
                 emitToUser(doctorUserId, 'appointment_sync', { id: appointment._id });
+
+                // Refresh Admin stats
+                const io = getIO();
+                io.emit('admin_stats_sync');
             } catch (err) {
                 console.warn('[SOCKET] Could not emit appointment_sync:', err);
             }
