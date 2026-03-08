@@ -90,9 +90,13 @@ export const updateProfile = async (req: Request | any, res: Response) => {
 
 export const updateSchedule = async (req: Request | any, res: Response) => {
     try {
+        console.log('[DEBUG] updateSchedule called for user:', req.user.id);
+        console.log('[DEBUG] req.body:', JSON.stringify(req.body, null, 2));
+
         const { schedules } = req.body;
         // Basic validation for now, relying on service or adding explicit DTO check if needed
         if (!schedules || !Array.isArray(schedules)) {
+            console.log('[DEBUG] Invalid schedule format received');
             return res.status(400).json({ success: false, message: 'Invalid schedule format' });
         }
 
